@@ -1,0 +1,127 @@
+# Building a Robust 3-Tier Architecture App on AWS
+
+## Overview
+This guide outlines the step-by-step process of building a **secure, scalable 3-Tier architecture** on AWS using **core services only**. We'll also walk through how to map your application to a **custom domain using Route 53** and secure it using SSL.
+
+### Architecture Breakdown
+
+| Layer         | Components                                                                 |
+|--------------|----------------------------------------------------------------------------|
+| Presentation | EC2 (Public Subnet), IAM Roles, Auto Scaling, Internet-facing ALB         |
+| Application  | EC2 (Private Subnet), IAM Roles, Internal Load Balancer                    |
+| Database     | RDS (MySQL in Private Subnet)                                              |
+| Security     | VPC with public & private subnets, NAT Gateway, Security Groups           |
+
+---
+
+## 🛠️ Project Infrastructure Setup
+
+### Step 1: VPC Creation
+1. Navigate to **VPC** service.
+2. Click **Create VPC** and select **VPC and more**.
+3. Input the following details:
+   - VPC Name: `my-demo-3-tier-vpc`
+   - CIDR Block: `192.168.0.0/22`
+   - AZs: `2`
+   - Public Subnets: `2`
+   - Private Subnets: `4`
+   - NAT Gateway: `1`
+4. Select `None` for DNS options and click **Create VPC**.
+5. Once created, rename subnets accordingly:
+   - App Subnets: `App-1`, `App-2`
+   - DB Subnets: `Db-1`, `Db-2`
+
+### Step 2: Security Groups Creation
+Create 5 security groups in your custom VPC:
+
+1. **Web-tier ALB SG**:
+   - Name: `Web-tier-ALB-SG`
+   - Inbound Rule: HTTP (80) from `Anywhere`
+
+2. **Web-tier EC2 SG**:
+   - Name: `Web-tier-SG`
+   - Inbound Rules:
+     - HTTP (80) from `Web-tier-ALB-SG`
+     - HTTP (80) from `VPC CIDR`
+
+3. **App-tier EC2 SG**:
+   - Name: `App-tier-SG`
+   - Inbound Rule: Custom TCP `4000` from `VPC CIDR`
+
+4. **App-tier ALB SG**:
+   - Name: `App-tier-ALB-SG`
+   - Inbound Rule: HTTP (80) from `VPC CIDR`
+
+5. **RDS Security Group**:
+   - Name: `RDS-SG`
+   - Inbound Rule: MySQL/Aurora (3306) from `VPC CIDR`
+
+---
+
+### Step 3: S3 Bucket & IAM Role Setup
+
+#### ✅ Clone Application Repository
+```bash
+git clone https://github.com/Uwadon1/3TierArchitectureApp.git
+```
+
+#### ✅ Create S3 Bucket
+1. Navigate to **S3** service > **Create bucket**.
+2. Choose a name like `demo-3tier-bucket-007`.
+3. Leave all options default and click **Create Bucket**.
+4. Upload your cloned application code to the bucket.
+
+#### ✅ Create IAM Role for EC2 (SSM Access)
+1. Go to **IAM > Roles > Create Role**.
+2. Select **EC2** as trusted entity.
+3. Attach **AmazonEC2RoleforSSM** policy.
+4. Name the role: `Demo-EC2-Role` and create.
+5. This role enables secure shell access to EC2 instances in private subnets via **AWS Systems Manager**.
+
+---
+
+### Step 4: Database Configuration (RDS)
+
+#### ✅ Create a Subnet Group
+1. Navigate to **RDS > Subnet Groups**.
+2. Create a new group:
+   - Name: `my-db-subnet-group`
+   - VPC: `my-demo-3-tier-vpc`
+   - Subnets: `Db-1`, `Db-2`
+3. Click **Create**.
+
+#### ✅ Launch RDS Instance
+1. Go to **RDS > Create Database**.
+2. Select **Standard Create**:
+   - Engine: **MySQL** 8.0.35
+   - Free tier
+   - DB Identifier: `database-1`
+   - Master username: `admin`
+   - Password: Choose a strong one
+3. In the Connectivity section:
+   - VPC: `my-demo-3-tier-vpc`
+   - Subnet group: `my-db-subnet-group`
+   - Security Group: `RDS-SG`
+   - Disable public access
+4. Disable enhanced monitoring and auto backups.
+5. Click **Create Database**.
+
+---
+
+Stay tuned for **Part 2** where we’ll:
+- Deploy the App tier in private subnets
+- Configure the internal ALB
+- Deploy the Web tier with Auto Scaling and an external ALB
+- Set up SSL with ACM
+- Map your custom domain via Route 53
+
+> 🎯 This project proves how core AWS resources alone can deliver a production-grade 3-tier architecture — secure, scalable, and mapped to your own domain.
+
+---
+
+**GitHub Repo:** [3TierArchitectureApp](https://github.com/Uwadon1/3TierArchitectureApp)
+
+**Author:** [Your Name Here] ✨
+
+---
+
